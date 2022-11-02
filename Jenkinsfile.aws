@@ -39,7 +39,13 @@ pipeline {
                         echo 'Executing PHPMetrics'
                         script {
                             docker.image('herloct/phpmetrics:latest').inside("--entrypoint=''") {
-                                sh 'phpmetrics --report-html=bsidesorlandoreport ./php'
+                                try {
+                                    sh 'phpmetrics --config=config.yml ./php'
+                                    junit skipPublishingChecks: true, testResults: 'results.xml'
+                                } catch (err) {
+                                    junit skipPublishingChecks: true, testResults: 'results.xml'
+                                    throw err
+                                }
                             }
                         }
                     }
@@ -49,7 +55,48 @@ pipeline {
                         echo 'Executing Tartufo'
                         script {
                             docker.image('godaddy/tartufo:latest').inside("--entrypoint=''") {
-                                sh '/venv/bin/tartufo scan-local-repo .'
+                                try{
+                                    sh '/venv/bin/tartufo -of json -od ./tartufo_results scan-local-repo .'
+                                } catch (err) {
+                                    throw err
+                                }
+                                    
+                            }
+                        }
+                    }
+                }
+                stage ('Executing Git Secrets Scan'){
+                    steps {
+                        echo 'Executing Git Secrets'
+                        script {
+                            docker.image('moduscreate/alpine-git-secrets:1.1').inside("--entrypoint=''") {
+                                try{
+                                    sh '''
+                                       git secrets --install -f
+                                       git secrets --register-aws
+                                       git secrets --scan
+                                       ''' 
+                                } catch (err) {
+                                    throw err
+                                }
+                                    
+                            }
+                        }
+                    }
+                }
+                stage ('Executing Horusec Scan'){
+                    steps {
+                        echo 'Executing Horusec Scans'
+                        script {
+                            docker.image('horuszup/horusec-cli:latest').inside("--entrypoint=''") {
+                                try{
+                                    sh '''
+                                       horusec start -p ./ --disable-docker="true"
+                                       ''' 
+                                } catch (err) {
+                                    throw err
+                                }
+                                    
                             }
                         }
                     }

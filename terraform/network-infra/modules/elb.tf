@@ -1,4 +1,5 @@
  resource "aws_elb" "jenkins_elb" { 
+    #checkov:skip=CKV_AWS_92:Disable logging as an example
     subnets = [for subnet in aws_subnet.public_subnets : subnet.id]
     cross_zone_load_balancing = true 
     security_groups = [aws_security_group.elb.id] 
@@ -20,10 +21,10 @@
         interval            = 5 
     } 
  
-    access_logs {
+    /* access_logs {
         bucket  = aws_s3_bucket.log_bucket.bucket
-        enabled = true
-    }
+         enabled = true
+     } */
 
   
     tags = { 
